@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29102.190
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EquipmentTree", "EquipmentTree.csproj", "{F2481B56-70EA-4251-B58D-8E145BF48A52}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F2481B56-70EA-4251-B58D-8E145BF48A52}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F2481B56-70EA-4251-B58D-8E145BF48A52}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F2481B56-70EA-4251-B58D-8E145BF48A52}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F2481B56-70EA-4251-B58D-8E145BF48A52}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {93F2F2C1-83A3-4EDA-9FED-03B9C96EC8D8}
+	EndGlobalSection
+EndGlobal
