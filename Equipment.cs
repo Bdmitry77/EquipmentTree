@@ -1,16 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Reflection;
+using System.Threading;
 
 namespace EquipmentTree
 {
 	public abstract class Equipment : INotifyPropertyChanged
 	{
-		public event PropertyChangedEventHandler PropertyChanged;
+		private static int _counter = 0;
 
-		Guid Id { get; set; } = Guid.NewGuid();
+		public int Id { get; }
+
+		public event PropertyChangedEventHandler PropertyChanged;
 
 		EquipmentType Type { get; }
 
@@ -24,49 +25,30 @@ namespace EquipmentTree
 				OnPropertyChanged(nameof(Name), value);
 			}
 		}
-		
-		public GroupEquipment Group { get; set; }
 
 		public virtual string GetCurrentState()
 		{
-			var currentState = $"Id is {Id}\nEquipment type is '{Type}'";
-
-			foreach (var propertyInfo in GetPropertyInfos())
+			var currentState = $"Equipment: Type='{Type}', Id='{Id}'";
+			foreach (var propertyInfo in ReflectionHelper.GetPropertyInfos(this))
 			{
 				currentState += "\n\t" + propertyInfo.Name + " = " + propertyInfo.GetValue(this);
 			}
 
 			return currentState + "\n";
 		}
-		
-		public IEnumerable<PropertyInfo> GetPropertyInfos()
-		{
-			var deviceType = this.GetType();
-			var properties = deviceType.GetProperties().Where(x => x.Name != "Group");
-			return properties;
-		}
-
-		public void RemoveFromGroup()
-		{
-			Group.Devices.Remove(this);
-		}
-
-		public void MoveToGroup(GroupEquipment destinationGroup)
-		{
-			destinationGroup.Devices.Add(this);
-			this.Group.Devices.Remove(this);
-		}
 
 		public Equipment(EquipmentType type)
 		{
 			Type = type;
 			Name = RandomName();
+			Id = Interlocked.Increment(ref _counter);
 		}
 
 		public Equipment(EquipmentType type, string name)
 		{
 			Type = type;
 			Name = name;
+			Id = Interlocked.Increment(ref _counter);
 		}
 
 		protected void OnPropertyChanged(string name, string value)
@@ -87,13 +69,35 @@ namespace EquipmentTree
 		{
 			return Guid.NewGuid().ToString().Substring(0, 5);
 		}
+
+		public static Equipment CreateRandomEquipment()
+		{
+			var assemblies = ReflectionHelper.GetSubclassTypes<Equipment>();
+
+			var random = new Random(DateTime.Now.Millisecond);
+			var randomIndex = random.Next(0, assemblies.Count());
+
+			var randomEquipmentType = assemblies.ElementAt(randomIndex);
+
+			Equipment equipment = Activator.CreateInstance(randomEquipmentType) as Equipment;
+
+			return equipment;
+		}
+
+		public static Guid ParseId(string id)
+		{
+			if (Guid.TryParse(id, out Guid guidId))
+				throw new Exception($"Cant parse equipment id '{id}'");
+
+			return guidId;
+		}
 	}
 
 	public enum EquipmentType
-    {
-        LedPanel,
-        Door,
-        Speaker,
-        CardReader
-    }
+	{
+		LedPanel,
+		Door,
+		Speaker,
+		CardReader
+	}
 }

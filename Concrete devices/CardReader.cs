@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace EquipmentTree
@@ -32,11 +33,13 @@ namespace EquipmentTree
 
 		private string ReverseBytesAndPad(string inputCardNumber)
         {
+            StringBuilder sb = new StringBuilder(16);
             string result = "";
             for (int i = inputCardNumber.Length; i > 1; i = i - 2)
             {
-                result += inputCardNumber.Substring(i - 2, 2);
+                sb.Append(inputCardNumber.Substring(i - 2, 2));
             }
+            result = sb.ToString();
             result = result.PadLeft(16, '0');
             return result;
         }

@@ -1,208 +1,188 @@
 ﻿using System;
 using System.Linq;
-using System.Reflection;
 
 namespace EquipmentTree
 {
 	class Program
-    {
+	{
 		static void Main(string[] args)
 		{
 			var root = new RootEquipment();
 			root.Initialize();
 
-			root.RandomActions(10);
+			root.RandomActions(1);
 
 			GetAllEquipment(root);
 
-            Console.WriteLine("You're in user edit mode. Use command 'help' to get more useful info");
+			Console.WriteLine("You're in user edit mode. Use command 'help' to get more useful info");
 
-            bool showMenu = true;
-            while (showMenu)
-            {
-                showMenu = MainMenu(root);
-            }
-        }
+			bool showMenu = true;
+			while (showMenu)
+			{
+				try
+				{
+					showMenu = MainMenu(root);
+				}
+				catch (Exception ex)
+				{
+					Console.WriteLine(ex.Message);
+				}
+			}
+		}
 
-        private static bool MainMenu(RootEquipment root)
+		private static bool MainMenu(RootEquipment root)
 		{
 			string inputString = Console.ReadLine();
 			string[] splittedString = inputString.Split(' ');
 
 			var command = splittedString[0].Trim();
 			var parameters = splittedString.Skip(1).ToArray();
+			//TODO: Баг. Убрать этот метод, т.к. при добавлении новой группы, его имя с маленькой буквы...
 			LowerParameters(parameters);
 
+			//TODO: Обработать отсутствие параметров
 			switch (command)
 			{
 				case "help":
 					Console.WriteLine(GetInstrustion());
 					return true;
-				
+
 				case "show":
 					if (parameters.Length == 1)
 					{
+						//show all
 						if (parameters[0] == "all")
-						{
 							GetAllEquipment(root);
-							return true;
-						}
-						else if (Int32.TryParse(parameters[0], out int groupNumber))
+						else if (parameters[0] == "group")
 						{
-							if (groupNumber >= 0 && groupNumber < root.Groups.Count)
-								GetGroupInfo(root.Groups[groupNumber]);
-							else
-								Console.WriteLine(ShowIndexError());
+							var group = ChooseGroup(root);
+							GetGroupInfo(group);
 						}
-						else
-							Console.WriteLine(ShowFormatError());
 					}
 					else if (parameters.Length == 2)
-						if (Int32.TryParse(parameters[0], out int groupNumber) 
-							&& Int32.TryParse(parameters[1], out int deviceNumber))
+					{
+						if (parameters[0] == "device")
 						{
-							if (groupNumber >= 0 
-								&& groupNumber < root.Groups.Count 
-								&& deviceNumber >= 0 
-								&& deviceNumber < root.Groups.ElementAt(groupNumber).Devices.Count)
-							{
-								var device = root.Groups.ElementAt(groupNumber).Devices.ElementAt(deviceNumber);
-								Console.WriteLine(device.GetCurrentState());
-							}
-							else
-								Console.WriteLine(ShowIndexError());
+							//show device <id>
+							var equipmentId = parameters[1];
+							var equipment = root.GetEquipmentById(equipmentId);
+
+							Console.WriteLine(equipment.GetCurrentState());
 						}
 						else
-						{
-							Console.WriteLine(ShowFormatError());
-						}
+							throw new Exception($"For 'show' second parameter expected: 'group' or 'device'");
+					}
 					else if (parameters.Length > 2)
 						Console.WriteLine(ShowFormatError());
 					else
 						GetAllEquipment(root);
-
 					return true;
 
 				case "add":
-                    if (parameters.Length == 1)
-                    {
-                        if (parameters[0] == "group")
-                        {
-                            if (!string.IsNullOrEmpty(parameters[1]))
-                            {
-                                root.Groups.Add(new GroupEquipment() { Name = parameters[1] });
-                                GetAllEquipment(root);
-                            }
-                            else
-                                Console.WriteLine($"Cant find group name parameter");
-                        }
-                        else if (parameters[0] == "device")
-                        {
-                            Console.WriteLine($"Choose type:");
-                            Equipment newDevice = ChooseType();
-                            GroupEquipment group = ChooseGroup(root);
+					if (parameters.Length >= 1)
+					{
+						if (parameters[0] == "group")
+						{
+							if (parameters.Length > 1)
+							{
+								//add group [groupName]
+								var newGroupName = parameters[1];
+								if (!string.IsNullOrEmpty(newGroupName))
+								{
+									var newGroup = new GroupEquipment(newGroupName);
+									root.AddGroup(newGroup);
+									GetAllEquipment(root);
+								}
+								else
+									throw new Exception($"Cant find parameter 'group name'");
+							}
+							else
+								throw new Exception($"Cant find parameter 'group name'");
+						}
+						else if (parameters[0] == "device")
+						{
+							//add device
+							Equipment newDevice = ChooseType();
+							GroupEquipment group = ChooseGroup(root);
 
-                            group.Devices.Add(newDevice);
-                            newDevice.Group = group;
+							group.AddEquipment(newDevice);
 
-                            GetAllEquipment(root);
-                        }
-                    }
-                    else
-                        Console.WriteLine(ShowFormatError());
-                    return true;
+							GetAllEquipment(root);
+						}
+						else
+							throw new Exception($"Expected first command parameter 'device' or 'group'.");
+					}
+					else
+						throw new Exception($"Expected one command parameter. You can add 'group' or 'device'.");
+					return true;
 
 				case "edit":
 					if (parameters.Length == 2)
 					{
-						if (Int32.TryParse(parameters[0], out int groupNumber)
-							&& Int32.TryParse(parameters[1], out int deviceNumber))
+						if (parameters[0] == "device")
 						{
-							if (groupNumber >= 0
-								&& groupNumber < root.Groups.Count
-								&& deviceNumber >= 0
-								&& deviceNumber < root.Groups.ElementAt(groupNumber).Devices.Count)
-							{
-								var device = root.Groups.ElementAt(groupNumber).Devices.ElementAt(deviceNumber);
+							//edit device [deviceId]
+							var equipmentId = parameters[1];
+							var equipment = root.GetEquipmentById(equipmentId);
 
-								EditDeviceProperty(device);
-							}
-							else
-								Console.WriteLine(ShowIndexError());
+							EditDeviceProperty(equipment);
 						}
 						else
+							throw new Exception($"Expected two command parameter 'device' and '<deviceId>'.");
+					}
+					else
+						throw new Exception($"Expected two command parameter 'device' and '<deviceId>.");
+					return true;
+
+				case "delete":
+					if (parameters[0] == "group")
+					{
+						//delete group
+						GroupEquipment group = ChooseGroup(root);
+						root.Groups.Remove(group);
+						GetAllEquipment(root);
+					}
+					else if (parameters[0] == "device")
+					{
+						//delete device [deviceId]
+						if (parameters.Length == 2)
 						{
-							Console.WriteLine(ShowFormatError());
+							var equipmentId = parameters[1];
+							var equipment = root.GetEquipmentById(equipmentId);
+
+							root.RemoveEquipment(equipment);
+
+							GetAllEquipment(root);
 						}
+						else
+							throw new Exception($"Expected two command parameter 'groupNumber' and 'equipmentNumber'.");
 					}
 					return true;
 
-                case "delete":
-                    if (parameters[0] == "group")
-                    {
-                        if (!string.IsNullOrEmpty(parameters[1]))
-                        {
-                            GroupEquipment group = ChooseGroup(root);
-                            root.Groups.Remove(group);
-                            GetAllEquipment(root);
-                        }
-                        else
-                            Console.WriteLine($"Cant find group name parameter");
-                    }
-                    else if (parameters[0] == "device")
-                    {
-                        if (parameters.Length == 3)
-                        {
-                            if (Int32.TryParse(parameters[1], out int groupNumber)
-                                && Int32.TryParse(parameters[2], out int deviceNumber))
-                            {
-                                if (groupNumber >= 0
-                                    && groupNumber < root.Groups.Count
-                                    && deviceNumber >= 0
-                                    && deviceNumber < root.Groups.ElementAt(groupNumber).Devices.Count)
-                                {
-                                    var device = root.Groups.ElementAt(groupNumber).Devices.ElementAt(deviceNumber);
-                                    device.RemoveFromGroup();
-                                    GetAllEquipment(root);
-                                }
-                                else
-                                    Console.WriteLine(ShowIndexError());
-                            }
-                            else
-                            {
-                                Console.WriteLine(ShowFormatError());
-                            }
-                        }
-                        else
-                            Console.WriteLine(ShowFormatError());
-                    }
-                    return true;
-
-                case "cls":
-                    Console.Clear();
-                    return true;
-                case "exit":
-                    return false;
-                default:
+				case "cls":
+					Console.Clear();
+					return true;
+				case "exit":
+					return false;
+				default:
 					return true;
 			}
 		}
 
 		private static void EditDeviceProperty(Equipment device)
 		{
-			var properties = device.GetPropertyInfos();
+			var properties = ReflectionHelper.GetPropertyInfos(device);
 			foreach (var propertyInfo in properties)
 			{
 				Console.WriteLine($"\t{propertyInfo.Name}");
 			}
 
-			PropertyInfo property = null;
 			while (true)
 			{
 				Console.Write("Choose device property:");
 
 				var name = Console.ReadLine();
-				property = properties.FirstOrDefault(x => x.Name == name);
+				var property = properties.FirstOrDefault(x => x.Name == name);
 
 				if (property != null)
 				{
@@ -218,10 +198,16 @@ namespace EquipmentTree
 								property.SetValue(device, Enum.ToObject(property.PropertyType, newValueInt));
 						}
 					}
-					else
+					else if (property.PropertyType == typeof(double) 
+						|| property.PropertyType == typeof(float) 
+						|| property.PropertyType == typeof(decimal))
 					{
 						newValue = newValue.Replace(".", System.Globalization.NumberFormatInfo.CurrentInfo.NumberDecimalSeparator);
 						newValue = newValue.Replace(",", System.Globalization.NumberFormatInfo.CurrentInfo.NumberDecimalSeparator);
+						property.SetValue(device, Convert.ChangeType(newValue, property.PropertyType));
+					}
+					else
+					{
 						property.SetValue(device, Convert.ChangeType(newValue, property.PropertyType));
 					}
 
@@ -234,11 +220,9 @@ namespace EquipmentTree
 
 		private static Equipment ChooseType()
 		{
-			var assemblies = Assembly.GetAssembly(typeof(Equipment))
-				.GetTypes()
-				.Where(myType => myType.IsClass
-					&& !myType.IsAbstract
-					&& myType.IsSubclassOf(typeof(Equipment)));
+			Console.WriteLine($"Choose type:");
+
+			var assemblies = ReflectionHelper.GetSubclassTypes<Equipment>();
 
 			foreach (var assembly in assemblies)
 			{
@@ -272,7 +256,7 @@ namespace EquipmentTree
 				Console.Write("Choose group name:");
 
 				var groupName = Console.ReadLine();
-				var group = root.Groups.FirstOrDefault(x => x.Name == groupName);
+				var group = root.GetGroupByName(groupName);
 				if (group != null)
 					return group;
 				else
@@ -289,54 +273,54 @@ namespace EquipmentTree
 		}
 
 		private static string GetInstrustion()
-        {
-            string readme = @"Equipment Tree
+		{
+			string readme = @"Equipment Tree
 Commands:
 1) help
 Help you to find every command
 2) show [all]
 Show all equipment
-    2.1) show [group]
-    Show concrete group of devices. 'Group' should be positive integer and group with this number is exist.
-    2.2) show [group] [device]
-    Same as 2.1, but show info about concrete device. 'Device' is positive integer existing device in concrete group.
+    2.1) show group
+    Show concrete group of devices.
+    2.2) show device [DeviceId]
+    Same as 2.1, but show info about concrete device. 'DeviceId' is positive integer existing device id.
 3) add group [group name]
     Add new group with a specific name
 4) add device
     Command for adding new devices. Then you will choose device type and group for it.
-5) edit [group number] [device number]
+5) edit device [deviceId]
 6) delete group
-7) delete device [group number] [device number]
+7) delete device [deviceId]
 8) cls
     Clear screen
 9) exit
     quit
 ";
-            return readme;
-        }
+			return readme;
+		}
 
-        private static string ShowFormatError()
-        {
-            return "Wrong command format";
-        }
+		private static string ShowFormatError()
+		{
+			return "Wrong command format";
+		}
 
-        private static string ShowIndexError()
-        {
-            return "Out of index range";
-        }
+		private static string ShowIndexError()
+		{
+			return "Out of index range";
+		}
 
-        private static void GetAllEquipment(RootEquipment root)
-        {
+		private static void GetAllEquipment(RootEquipment root)
+		{
 			foreach (var group in root.Groups)
 			{
 				if (group != null)
 					GetGroupInfo(group);
 			}
-        }
+		}
 
-        private static void GetGroupInfo(GroupEquipment group)
-        {
-            Console.WriteLine($"Group '{group.Name}':");
+		private static void GetGroupInfo(GroupEquipment group)
+		{
+			Console.WriteLine($"Group: Name='{group.Name}':");
 
 			if (group.Devices.Any())
 			{
@@ -352,6 +336,6 @@ Show all equipment
 			}
 			else
 				Console.WriteLine($"There are no devices");
-        }
-    }
+		}
+	}
 }
